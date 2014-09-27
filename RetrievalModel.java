@@ -10,6 +10,9 @@
 
 public abstract class RetrievalModel {
 
+	 public double k_1 = 0.0, b = 0.0, k_3 = 0.0;
+	 public double mu = 0.0, lambda = 0.0; 
+	 
   /**
    *  Set a retrieval model parameter.
    *  @param parameterName The name of the parameter to set.

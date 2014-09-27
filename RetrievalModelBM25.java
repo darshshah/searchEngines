@@ -1,9 +1,11 @@
+import java.io.IOException;
+
+import org.apache.lucene.index.IndexReader;
+
 
 public class RetrievalModelBM25 extends RetrievalModel {
 	
-	  double k_1 = 0.0, b = 0.0, k_3 = 0.0;
-	  
-
+	 
 	 /**
 	   * Set a retrieval model parameter.
 	   * @param parameterName
@@ -25,11 +27,11 @@ public class RetrievalModelBM25 extends RetrievalModel {
 	   */
 	
 	public boolean setParameter(String parameterName, String value) {
-		 if (parameterName.equals("BM:k_1")) {
+		 if (parameterName.equals("k_1")) {
 			 k_1 = Double.parseDouble(value);
-		 } else if (parameterName.equals("BM:b")) {
+		 } else if (parameterName.equals("b")) {
 			 b = Double.parseDouble(value);
-		 } else if (parameterName.equals("BM:k_3")) {
+		 } else if (parameterName.equals("k_3")) {
 			 k_3 = Double.parseDouble(value);
 		 } else {
 			 return false;
@@ -37,5 +39,4 @@ public class RetrievalModelBM25 extends RetrievalModel {
 		 
 		 return true;
 	}
-
 }

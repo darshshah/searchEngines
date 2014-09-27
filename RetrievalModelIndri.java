@@ -1,7 +1,6 @@
 
 public class RetrievalModelIndri extends RetrievalModel {
 
-	double mu = 0.0, lambda = 0.0; 
 	/**
 	   * Set a retrieval model parameter.
 	   * @param parameterName
@@ -24,9 +23,9 @@ public class RetrievalModelIndri extends RetrievalModel {
 	
 	public boolean setParameter(String parameterName, String value) {
 		
-		 if (parameterName.equals("Indri:mu")) {
+		 if (parameterName.equals("mu")) {
 			 mu = Double.parseDouble(value);
-		 } else if (parameterName.equals("Indri:lambda")) {
+		 } else if (parameterName.equals("lambda")) {
 			 lambda = Double.parseDouble(value);
 		 } else {
 			return false;

@@ -34,6 +34,8 @@ public class QryEval {
   //  own headaches.
 
   public static IndexReader READER;
+  public static DocLengthStore DocLenStore;
+  public static RetrievalModel model = null;
 
   //  Create and configure an English analyzer that will be used for
   //  query parsing.
@@ -78,13 +80,15 @@ public class QryEval {
     // open the index
     READER = DirectoryReader.open(FSDirectory.open(new File(params.get("indexPath"))));
 
+   
     if (READER == null) {
       System.err.println(usage);
       System.exit(1);
     }
 
-    DocLengthStore s = new DocLengthStore(READER);
-    RetrievalModel model = null;
+    DocLenStore = new DocLengthStore(READER);
+    
+    
     if(params.get("retrievalAlgorithm").equals("UnrankedBoolean"))
     {
     	model = new RetrievalModelUnrankedBoolean();
@@ -125,6 +129,7 @@ public class QryEval {
     	System.err.println("incorrect model");
     	System.exit(1);
     }
+    
 
     /*
      *  The code below is an unorganized set of examples that show
@@ -253,8 +258,13 @@ public class QryEval {
 
     qString = qString.trim();
 
-    if (qString.charAt(0) != '#') {
-      qString = "#or(" + qString + ")";
+    if (qString.charAt(0) != '#') {  	
+      if (model instanceof RetrievalModelBM25)
+    	  qString = "#sum(" + qString + ")";
+      else if (model instanceof RetrievalModelIndri)
+    	  qString = "#and(" + qString + ")";
+      else
+    	  qString = "#or(" + qString + ")";
     }
 
     // Tokenize the query.
@@ -284,6 +294,9 @@ public class QryEval {
       } else if (token.toLowerCase().matches("#near/\\d*")) {  
     	  String num[] = token.split("/");
     	  currentOp = new QryopIlNear(Integer.parseInt(num[1])); // pass the number as arg in near
+          stack.push(currentOp); 
+      } else if (token.equalsIgnoreCase("#sum")) {
+          currentOp = new QryopSlSum();
           stack.push(currentOp);
       } else if (token.startsWith(")")) { // Finish current query operator.
         // If the current query operator is not an argument to
