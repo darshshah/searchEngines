@@ -258,7 +258,7 @@ public class QryEval {
 
     qString = qString.trim();
 
-    if (qString.charAt(0) != '#') {  	
+    if (qString.charAt(0) != '#' || qString.charAt(qString.length()-1) != ')') {  	
       if (model instanceof RetrievalModelBM25)
     	  qString = "#sum(" + qString + ")";
       else if (model instanceof RetrievalModelIndri)

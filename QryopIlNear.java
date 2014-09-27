@@ -54,7 +54,9 @@ public class QryopIlNear extends QryopIl {
     int nearFreq = 0; // This stores the frequency of occurence of near teem. 
     
     DaaTPtr ptr0 = this.daatPtrs.get(0);
-
+    result.invertedList.field =  ptr0.invList.field;
+    int ctf = 0;
+    
     EVALUATEDOCUMENTS:
     for ( ; ptr0.nextDoc < ptr0.invList.postings.size(); ptr0.nextDoc ++) {
 
@@ -137,14 +139,22 @@ public class QryopIlNear extends QryopIl {
       }
    
       	if (nearFreq > 0) {  
-      	  if (r instanceof RetrievalModelUnrankedBoolean)
+      	
+      	  if (r instanceof RetrievalModelUnrankedBoolean)  {
+      		  ctf ++;
       		  result.invertedList.add(ptr0Docid, 1);  // put freq as 1 for unranked boolean
-      	  else
-      		result.invertedList.add(ptr0Docid, nearFreq);
+      	  }
+      	  else {
+      		  ctf += nearFreq;   // increment the ctf freq
+      		  result.invertedList.add(ptr0Docid, nearFreq);
+      	  }
       	}
 	    
     }
-
+   
+    result.invertedList.df =  result.invertedList.postings.size(); // set the document freq of the inverted list.
+    result.invertedList.ctf = ctf;
+    
     freeDaaTPtrs ();
    
     return result;
@@ -202,6 +212,6 @@ public class QryopIlNear extends QryopIl {
     for (Iterator<Qryop> i = this.args.iterator(); i.hasNext(); )
       result += (i.next().toString() + " ");
 
-    return ("#NEXT( " + result + ")");
+    return ("#NEAR( " + result + ")");
   }
 }

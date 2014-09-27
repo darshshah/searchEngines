@@ -44,11 +44,15 @@ public class QryopSlAnd extends QryopSl {
       return (evaluateBoolean (r));
     if (r instanceof RetrievalModelRankedBoolean)
     	return (evaluateRankedBoolean(r));
+    if (r instanceof RetrievalModelBM25)
+    	return (evaluateBM25(r));
+    
     
     return null;
   }
 
-  /**
+
+/**
    *  Evaluates the query operator for Unranked Boolean retrieval models,
    *  including any child operators and returns the result.
    *  @param r A retrieval model that controls how the operator behaves.
@@ -213,7 +217,12 @@ public class QryopSlAnd extends QryopSl {
 
 	    return result;
 	  }
-
+  
+  
+  private QryResult evaluateBM25(RetrievalModel r) {
+		// TODO Auto-generated method stub
+		return null;
+	}
   
   /*
    *  Return a string version of this query operator.  
