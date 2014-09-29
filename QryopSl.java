@@ -13,7 +13,7 @@ import java.io.*;
 import java.util.*;
 
 public abstract class QryopSl extends Qryop {
-
+	 
   /**
    *  Use the specified retrieval model to evaluate the query arguments.
    *  Define and return DaaT pointers that the query operator can use.
@@ -22,7 +22,7 @@ public abstract class QryopSl extends Qryop {
    *  @throws IOException
    */
   public void allocDaaTPtrs (RetrievalModel r) throws IOException {
-
+		
     for (int i=0; i<this.args.size(); i++) {
 
       //  If this argument doesn't return ScoreLists, wrap it

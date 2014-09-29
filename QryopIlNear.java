@@ -6,6 +6,7 @@
  */
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -54,8 +55,7 @@ public class QryopIlNear extends QryopIl {
     int nearFreq = 0; // This stores the frequency of occurence of near teem. 
     
     DaaTPtr ptr0 = this.daatPtrs.get(0);
-    result.invertedList.field =  ptr0.invList.field;
-    int ctf = 0;
+    result.invertedList.field =  new String (ptr0.invList.field);
     
     EVALUATEDOCUMENTS:
     for ( ; ptr0.nextDoc < ptr0.invList.postings.size(); ptr0.nextDoc ++) {
@@ -67,15 +67,18 @@ public class QryopIlNear extends QryopIl {
       for (int j=1; j<this.daatPtrs.size(); j++) {
 
     	  DaaTPtr ptrj = this.daatPtrs.get(j);
-
+    	  
+    	  
 			while (true) {
+			  int currdocid = 0; 
+				
 			  if (ptrj.nextDoc >= ptrj.invList.postings.size())
 			    break EVALUATEDOCUMENTS;		// No more docs can match
 			  else
-			    if (ptrj.invList.getDocid (ptrj.nextDoc) > ptr0Docid)
+			    if ((currdocid = ptrj.invList.getDocid (ptrj.nextDoc)) > ptr0Docid)
 			      continue EVALUATEDOCUMENTS;	// The ptr0docid can't match.
 			  else
-			    if (ptrj.invList.getDocid (ptrj.nextDoc) < ptr0Docid)
+			    if ((currdocid = ptrj.invList.getDocid (ptrj.nextDoc)) < ptr0Docid)
 			      ptrj.nextDoc ++;			// Not yet at the right doc.
 			  else
 			      break;				// ptrj matches ptr0Docid
@@ -89,7 +92,8 @@ public class QryopIlNear extends QryopIl {
       int [] savedpos = new int [this.daatPtrs.size()];   
      
       nearFreq = 0;  // reset freq for each docid
-      
+      int pos=0; 
+      ArrayList<Integer> positions = new ArrayList<Integer>();
       // The outer loop will iterate through all the doc positings for the first term
       // The internal loop will search the other terms in query order
       EVALUATEPOSITIONS:
@@ -102,18 +106,16 @@ public class QryopIlNear extends QryopIl {
     		  DaaTPtr ptrj = this.daatPtrs.get(j);
    	      
 	    	 while(true)
-	    	  {
-	    		 
+	    	  { 
 	    		  if (savedpos[j] >= ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.size() ) // end of list
 	    		  {
 	    			 break EVALUATEPOSITIONS;
 	    		  }
-	    		  else if (poscompare  > ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j]) )  // not yet
+	    		  else if (poscompare  >  (pos = ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j])))  // not yet
 	    		  {
 	    			  savedpos[j] =  savedpos[j] + 1;
 	    		  }
-	    		  else if (poscompare < ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j]) && 
-	    				  ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j])-poscompare > this.delta) // didn't match
+	    		  else if (poscompare <  (pos = ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j])) && ((pos = ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j])) - poscompare) > this.delta) // didn't match
 	    		  {
 	    			  continue EVALUATEPOSITIONS;
 	    		  }
@@ -124,12 +126,13 @@ public class QryopIlNear extends QryopIl {
 	    		  
 	    	  }
 	    	 
-	    	// update poscompare have position of next list to compare in array.
+	    	// update poscompare to have position of next list to compare in array.
    		  poscompare = ptrj.invList.postings.elementAt(ptrj.nextDoc).positions.get(savedpos[j]);
         } 	  
     	  // increment the occurence frequency.
     	  nearFreq++;
-    	  
+    	  // Save the pos compare here. It matched at postition k. So, add the position k to the list.
+    	  positions.add(ptr0.invList.postings.elementAt(ptr0.nextDoc).positions.get(k));  
     	  // increment the position index of jth list as we already processed the current positon index.
     	  for (int l = 1; l <this.daatPtrs.size(); l++ )
     	  {
@@ -141,20 +144,15 @@ public class QryopIlNear extends QryopIl {
       	if (nearFreq > 0) {  
       	
       	  if (r instanceof RetrievalModelUnrankedBoolean)  {
-      		  ctf ++;
       		  result.invertedList.add(ptr0Docid, 1);  // put freq as 1 for unranked boolean
       	  }
       	  else {
-      		  ctf += nearFreq;   // increment the ctf freq
-      		  result.invertedList.add(ptr0Docid, nearFreq);
+      		  result.invertedList.appendPosting(ptr0Docid, positions);
       	  }
       	}
 	    
     }
    
-    result.invertedList.df =  result.invertedList.postings.size(); // set the document freq of the inverted list.
-    result.invertedList.ctf = ctf;
-    
     freeDaaTPtrs ();
    
     return result;

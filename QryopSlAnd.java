@@ -8,7 +8,7 @@ import java.io.*;
 import java.util.*;
 
 public class QryopSlAnd extends QryopSl {
-
+   
   /**
    *  It is convenient for the constructor to accept a variable number
    *  of arguments. Thus new qryopAnd (arg1, arg2, arg3, ...).
@@ -44,9 +44,8 @@ public class QryopSlAnd extends QryopSl {
       return (evaluateBoolean (r));
     if (r instanceof RetrievalModelRankedBoolean)
     	return (evaluateRankedBoolean(r));
-    if (r instanceof RetrievalModelBM25)
-    	return (evaluateBM25(r));
-    
+    if (r instanceof RetrievalModelIndri)
+    	return (evaluateIndri(r));
     
     return null;
   }
@@ -138,7 +137,7 @@ public class QryopSlAnd extends QryopSl {
 
     if (r instanceof RetrievalModelUnrankedBoolean)
       return (0.0);
-
+    
     return 0.0;
   }
 
@@ -219,10 +218,79 @@ public class QryopSlAnd extends QryopSl {
 	  }
   
   
-  private QryResult evaluateBM25(RetrievalModel r) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+  public QryResult evaluateIndri(RetrievalModel r) throws IOException {
+		
+	   //  Initialization
+
+	    allocDaaTPtrs (r);
+	    QryResult result = new QryResult ();
+	 
+	    double queryVal = (double) 1 / (double)this.args.size(); // args / daat ?
+	    boolean looper = true;
+	    double tempScore = 0;
+	    DaaTPtr ptri;
+	    
+	    while (looper)
+	    {
+	    	looper = false;
+	    	double answer = 1;
+	    	// the minDoc is initialized to max value
+	    	int minDoc = Integer.MAX_VALUE;
+	    	
+	    	// Get the minimum docid from the inv lists.
+	    	for (int i=0; i < this.daatPtrs.size(); i++) {
+	    		
+	    		ptri = this.daatPtrs.get(i);
+	    		
+	    		if (ptri.nextDoc == ptri.scoreList.scores.size())
+	    			continue;
+	    		
+	    		if (minDoc >= ptri.scoreList.getDocid (ptri.nextDoc))
+	    		{
+	    			minDoc = ptri.scoreList.getDocid (ptri.nextDoc);
+	    			looper = true;
+	    		}
+	    		
+	    	}
+	    	
+	    	if (looper == false)
+	    		break;
+	    		
+	    	for (int i=0; i < this.daatPtrs.size(); i++) {
+		    	
+	    		ptri = this.daatPtrs.get(i);
+	    		
+	    		if (ptri.nextDoc == ptri.scoreList.scores.size()) {
+	    			tempScore = ((QryopSlScore) this.args.get(i)).getDefaultScore(r, minDoc);
+	    			double poww = Math.pow(tempScore, queryVal);	//  INDRI
+	    			answer = answer * poww; //	INDRI
+	    			continue;
+	    		}
+	    		
+	    		if (minDoc != ptri.scoreList.getDocid (ptri.nextDoc))
+	    		{
+	    		
+	    			tempScore = ((QryopSlScore) this.args.get(i)).getDefaultScore(r, minDoc);
+	    			double poww = Math.pow(tempScore, queryVal);	//  INDRI
+	    			answer = answer * poww; //	INDRI
+	    		}
+	    		else
+	    		{
+	    			tempScore = ptri.scoreList.getDocidScore(ptri.nextDoc); 
+	    			double poww = Math.pow(tempScore, queryVal);	//  INDRI
+	    			answer = answer * poww;	//	INDRI
+	    			ptri.nextDoc++;
+	    		}
+	    		
+	    	}  	
+	    	
+	    	result.docScores.add (minDoc, answer);
+	    }
+
+	    freeDaaTPtrs ();
+
+	    return result;
+	  }
   
   /*
    *  Return a string version of this query operator.  

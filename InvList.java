@@ -183,5 +183,6 @@ public class InvList {
 	// TODO Auto-generated method stub
 	this.postings.add(new DocPosting(docid, nearFreq));
 	this.df++;
+	this.ctf += nearFreq;
 }
 }

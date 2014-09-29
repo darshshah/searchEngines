@@ -12,7 +12,10 @@ import java.io.*;
 import java.util.*;
 
 public class QryopSlScore extends QryopSl {
-
+	
+	 long _ctf = 0;
+	 String _field = null;
+	  
   /**
    *  Construct a new SCORE operator.  The SCORE operator accepts just
    *  one argument.
@@ -54,7 +57,9 @@ public class QryopSlScore extends QryopSl {
     if (r instanceof RetrievalModelRankedBoolean)
     	return (evaluateRankedBoolean (r));
     if (r instanceof RetrievalModelBM25)
-    	return (evaluateRankedBM25 (r));
+    	return (evaluateBM25 (r));
+    if (r instanceof RetrievalModelIndri)
+    	return (evaluateIndri (r));
 
     return null;
   }
@@ -105,7 +110,35 @@ public class QryopSlScore extends QryopSl {
 
     if (r instanceof RetrievalModelUnrankedBoolean)
       return (0.0);
-
+    if (r instanceof RetrievalModelIndri)
+      {
+    	// do the default calc
+    	
+    	// term freq 
+  		int termFreq = 0;
+  		// length of doc in that field 
+  		long docLen = 0;
+  		// the cumulative term frequency in corpus 
+  		long ctf = _ctf;
+  		//  length_terms (C) means the total term frequency of all terms in the entire collection
+  		long C = QryEval.READER.getSumTotalTermFreq(_field);
+  		// PMLE is constant term per query
+  		double PMLE = ((double)ctf) / ((double)C);
+  		// Indri tunable param
+  		double lambda = r.lambda;
+  		// Indri tunable param
+  		double mu = r.mu;
+  		// Pdq will hold final score
+  		double Pdq = 0.0;
+  		
+  		docLen = QryEval.DocLenStore.getDocLength(_field, (int)docid);
+		     
+		 // Indri SCORE formula - term freq is 0
+  		Pdq = (lambda*((mu*PMLE)/(docLen + mu))) + ((1-lambda)*PMLE);
+		     
+    	return Pdq;
+      }
+    
     return 0.0;
   }
   
@@ -142,7 +175,7 @@ public class QryopSlScore extends QryopSl {
 	    return result;
   }
   
-  public QryResult evaluateRankedBM25(RetrievalModel r) throws IOException {
+  public QryResult evaluateBM25(RetrievalModel r) throws IOException {
 		
 	  QryResult result = args.get(0).evaluate(r);
 
@@ -157,13 +190,16 @@ public class QryopSlScore extends QryopSl {
 	    // avg doclen for whole collection. It is dependent upon the field. 
 	    // the total number of term occurrences in all 'x' field/ 
 	    //  number of documents that have 'x' field
-	    double avgDocLen = QryEval.READER.getSumTotalTermFreq(result.invertedList.field) / QryEval.READER.getDocCount (result.invertedList.field);
+	    double avgDocLen = ((double) QryEval.READER.getSumTotalTermFreq(result.invertedList.field)) / ((double)QryEval.READER.getDocCount (result.invertedList.field));
 	    // RSJ weight (the collection or idf weight)
-	    double RSJweight = (double) Math.log((N - dfreq + 0.5)/(dfreq + 0.5));
+	    double RSJweight = Math.log((N - dfreq + 0.5)/ (double)(dfreq + 0.5));
 	    // BM25 tunable params
 	    double k1 = r.k_1;
+	    // BM25 tunable params
 	    double b = r.b;
+	    // term freq 
 	    int termFreq = 0;
+		// length of doc in that field 
 	    long docLen = 0;
 	    
 	    for (int i = 0; i < result.invertedList.df; i++) {
@@ -174,7 +210,7 @@ public class QryopSlScore extends QryopSl {
 	     docLen = QryEval.DocLenStore.getDocLength(result.invertedList.field, result.invertedList.postings.get(i).docid);
 	     
 	     // calculating the tf weight/doc weight
-	     double DOCweight = termFreq / (termFreq + k1*((1-b) + b*(docLen/avgDocLen)));
+	     double DOCweight = termFreq /(double) (termFreq + k1*((1-b) + b*(((double) docLen)/(avgDocLen))));
 	     
 	      result.docScores.add(result.invertedList.postings.get(i).docid,
 				   (double) (RSJweight*DOCweight));
@@ -183,13 +219,54 @@ public class QryopSlScore extends QryopSl {
 	    // The SCORE operator should not return a populated inverted list.
 	    // If there is one, replace it with an empty inverted list.
 
-	    if (result.invertedList.df > 0)
+	    if (result.invertedList.df >= 0)
 		result.invertedList = new InvList();
 
 	    return result;
 	}
   
+  	public QryResult evaluateIndri(RetrievalModel r) throws IOException {
+  		
+  		QryResult result = args.get(0).evaluate(r);
+  		
+  		// term freq 
+  		int termFreq = 0;
+  		// length of doc in that field 
+  		long docLen = 0;
+  		// the cumulative term frequency in corpus 
+  		long ctf = result.invertedList.ctf;
+  		_ctf = ctf;
+  		//  length_terms (C) means the total term frequency of all terms in the entire collection
+  		long C = QryEval.READER.getSumTotalTermFreq(result.invertedList.field);
+  		_field = result.invertedList.field;
+  		// PMLE is constant term per query
+  		double PMLE = ((double) ctf) /((double)C);
+  		// Indri tunable param
+  		double lambda = r.lambda;
+  		// Indri tunable param
+  		double mu = r.mu;
+  		// Pdq will hold final score
+  		double Pdq = 0.0;
+  		
+  		for (int i = 0; i < result.invertedList.df; i++) {
 
+  		     // the term freq of term inside the document. 
+  		     termFreq = result.invertedList.postings.get(i).tf;
+  		     // lenght of the current document with the field x
+  		     docLen = QryEval.DocLenStore.getDocLength(result.invertedList.field, result.invertedList.postings.get(i).docid);
+  		     
+  		     // Indri SCORE formula
+  		     Pdq = (lambda*((termFreq + mu*PMLE)/(docLen + mu))) + ((1-lambda)*PMLE);
+  		     
+  		   result.docScores.add(result.invertedList.postings.get(i).docid, Pdq);
+  		} 
+  		
+  		 if (result.invertedList.df > 0)
+  			result.invertedList = new InvList();
+
+  		 return result;
+	}
+  
   /**
    *  Return a string version of this query operator.  
    *  @return The string version of this query operator.

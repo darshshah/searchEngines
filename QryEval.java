@@ -257,15 +257,46 @@ public class QryEval {
     // is a tiny bit easier if unnecessary whitespace is removed.
 
     qString = qString.trim();
-
-    if (qString.charAt(0) != '#' || qString.charAt(qString.length()-1) != ')') {  	
-      if (model instanceof RetrievalModelBM25)
-    	  qString = "#sum(" + qString + ")";
-      else if (model instanceof RetrievalModelIndri)
-    	  qString = "#and(" + qString + ")";
-      else
-    	  qString = "#or(" + qString + ")";
+    
+    if (model instanceof RetrievalModelIndri)
+    {
+    	String Str = qString;
+	    int i, x;
+	    while(Str.contains("#AND"))
+	    {
+	    	x = Str.indexOf("#AND");
+	    	StringBuilder sb = new StringBuilder();
+	    	sb.append(Str.substring(0, x));
+	    	
+	    	for (i = x + 5; i < Str.length(); i++)
+	    	{
+	    		if (Str.charAt(i) == ')')
+	    		{
+	    			break;
+	    		}
+	    		sb.append(Str.charAt(i));
+	    	}
+	    	i++;
+	    	while (i < Str.length())
+	    	{
+	    		sb.append(Str.charAt(i));
+	    		i++;
+	    	}
+	    
+	    	Str = sb.toString();
+	    }
+	    
+	    qString = Str;
     }
+    
+    if (qString.charAt(0) != '#' || qString.charAt(qString.length()-1) != ')') {  	
+        if (model instanceof RetrievalModelBM25)
+      	  qString = "#sum(" + qString + ")";
+        else if (model instanceof RetrievalModelIndri)
+      	  qString = "#and(" + qString + ")";
+        else
+      	  qString = "#or(" + qString + ")";
+      }
 
     // Tokenize the query.
 
@@ -323,15 +354,15 @@ public class QryEval {
     	  
     	  // pass the query to tokenizeQuery before adding it to currentOp.
     	 
-    	  String [] vals = tokenizeQuery(token);
+    	  String [] field = token.split("\\.");  // split on . to add field term if present
+    	  String [] vals = tokenizeQuery(field[0]);
     	  
     	  if ( vals.length != 0)
     	  {
-    		  String [] field = vals[0].split("\\.");  // split on . to add field term if present
     		  if (field.length > 1)
-    			  currentOp.add(new QryopIlTerm(field[0], field[1]));
+    			  currentOp.add(new QryopIlTerm(vals[0], field[1]));
     		  else
-    			  currentOp.add(new QryopIlTerm(field[0]));
+    			  currentOp.add(new QryopIlTerm(vals[0]));
     	  }
     		  
       }
